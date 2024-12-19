@@ -17,15 +17,31 @@ import {
   Textarea,
 } from "@nextui-org/react";
 import { Tabs, Tab } from "@nextui-org/react";
+import { createSessionId } from "@/lib/db";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { createSession, getSession } from "@/lib/actions";
+import axios from "axios";
 
 function App() {
   const [code, setCode] = useState("");
   const [currLang, setCurrLang] = useState("c");
   const [inputText, setInputText] = useState("");
 
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const sessionId = createSessionId();
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sessionId", sessionId);
+
+    router.replace(`${pathname}?${params.toString()}`);
+  }, []);
+
   const handleChange: ReactCodeMirrorProps["onChange"] = (v, vu) => {
     setCode(v);
-    console.log(v);
   };
 
   const changeLanguage: SelectHTMLAttributes<HTMLSelectElement>["onChange"] = (
@@ -34,14 +50,20 @@ function App() {
     setCurrLang(e.target.value as any);
   };
 
-  const handleRun: ButtonProps["onPress"] = (e) => {
+  const handleRun: ButtonProps["onPress"] = async (e) => {
+    // submit it to backend for execution
+    const sessionId = searchParams.get("sessionId");
+    if (!sessionId) return;
+
     const data = {
       code: code,
       input: inputText,
       lang: currLang,
+      sessionId: sessionId,
     };
 
-    // submit it to backend for execution
+    const res = await axios.post("/api/session/save", data);
+    console.log(res);
   };
 
   const langs = {
@@ -91,7 +113,11 @@ function App() {
                 key="input"
                 title="Input"
               >
-                <Textarea minRows={8} />
+                <Textarea
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  minRows={8}
+                />
               </Tab>
               <Tab
                 key="output"
