@@ -51,11 +51,7 @@ function App() {
     ];
   }, []);
 
-  const {
-    data: session_id,
-    isLoading,
-    error,
-  } = useQuery({
+  const { isLoading, error } = useQuery({
     queryKey: ["session_id"],
     queryFn: () => {
       if (!sessionId) {
@@ -86,7 +82,7 @@ function App() {
 
   const handleChange: ReactCodeMirrorProps["onChange"] = (v) => setCode(v);
   const changeLanguage = (value: string) => setCurrLang(value);
-  const handleRun: ButtonProps["onClick"] = async (e) => {
+  const handleRun: ButtonProps["onClick"] = async () => {
     // submit it to backend for execution
     if (!sessionId) return;
 
