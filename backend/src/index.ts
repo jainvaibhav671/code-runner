@@ -61,14 +61,16 @@ app.post("/save-session", async (c) => {
 });
 
 app.post("/run-code", async (c) => {
-  const { sessionId } = (await c.req.json()) as {
+  const data = (await c.req.json()) as {
+    code: string;
+    input: string;
+    lang: string;
     sessionId: string;
   };
 
-  const client = getClient();
   const tempDir = `./tmp/executions/${uuidv4()}`;
 
-  const { doc, error } = await getSession(sessionId);
+  const { doc, error } = await getSession(data.sessionId);
   if (!doc) {
     console.warn(error);
     return c.json({ success: false, error: "Session not found" });
@@ -91,21 +93,26 @@ app.post("/run-code", async (c) => {
   }
 
   const cmd = buildDockerCommand(lang, code_file_path, input_file_path);
+  console.log(data, cmd);
 
-  const taskNamespace = io.of(`/task/${sessionId}`);
+  const taskNamespace = io.of(`/task/${data.sessionId}`);
   taskNamespace.on("connection", (socket) => {
     try {
+      console.log("executing");
       const child = exec(cmd);
 
       child.stdout?.on("data", (data) => {
+        console.log(data);
         socket.emit("output", data.toString());
       });
 
       child.stderr?.on("data", (data) => {
+        console.log(data);
         socket.emit("error", data.toString());
       });
 
       child.on("close", (code) => {
+        console.log(code);
         socket.emit("done", `Execution finished with exit code ${code}`);
         taskNamespace.disconnectSockets();
       });

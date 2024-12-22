@@ -10,6 +10,7 @@ import { useQueryState } from "nuqs";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { io } from "socket.io-client";
 
 const BACKEND_URL = import.meta.env.VITE_PUBLIC_SERVER_URL as string;
 
@@ -30,7 +31,7 @@ function App() {
           <Input.TextArea
             placeholder="Enter your input here"
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={(e) => setInputText(e.currentTarget.value)}
             style={{ resize: "none" }}
             rows={4}
           />
@@ -94,10 +95,35 @@ function App() {
     };
 
     const res = await saveSession.mutateAsync(data);
-    const res2 = await runCode.mutateAsync({ sessionId });
+    if (!res.data.success) {
+      console.warn(res.data.error);
+      return;
+    }
+    const res2 = await runCode.mutateAsync(data);
+    if (!res2.data.success) {
+      console.warn(res2.data.error);
+      return;
+    }
 
-    console.log("save", res);
-    console.log("run", res2);
+    const socket = io(`${BACKEND_URL}/task/${sessionId}`, {
+      transports: ["websocket"],
+    });
+
+    // Listen for output messages from the backend
+    socket.on("output", (data) => {
+      console.log("Output:", data);
+    });
+
+    // Listen for completion notification
+    socket.on("done", (message) => {
+      console.log("Execution completed:", message);
+      socket.disconnect(); // Clean up after execution completes
+    });
+
+    // Handle connection errors
+    socket.on("connect_error", (error) => {
+      console.error("WebSocket connection error:", error.message);
+    });
   };
 
   const selectOptions = [
@@ -122,7 +148,7 @@ function App() {
           </header>
           <Layout>
             <Flex
-              gap={8}
+              gap={2}
               justify="flex-end"
             >
               <Select
