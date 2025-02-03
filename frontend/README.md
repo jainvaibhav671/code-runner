@@ -10,3 +10,5 @@
   ```bash
   pnpm dev
   ```
+
+> The server starts at [http://localhost:5173](http://localhost:5173)
